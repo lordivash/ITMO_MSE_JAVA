@@ -20,7 +20,7 @@ public class GitMojo extends AbstractMojo {
     @Override
     public void execute() throws MojoExecutionException, MojoFailureException {
         try(Repository existingRepo = new FileRepositoryBuilder()
-                .setGitDir(project.getBasedir())
+                .findGitDir(project.getBasedir())
                 .build()
         ) {
 
