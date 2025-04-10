@@ -65,7 +65,62 @@ public class Multiset<E> extends AbstractCollection<E> {
 	 */
 
 	public Set<Entry<E>> entrySet() {
-		throw new UnsupportedOperationException("Not supported yet.");
+		return new EntrySet();
+	}
+
+	private class EntrySet extends AbstractSet<Entry<E>> {
+		@Override
+		public Iterator<Entry<E>> iterator() {
+			return new EntrySetIterator();
+		}
+
+		@Override
+		public int size() {
+			return m.size();
+		}
+	}
+
+	private class EntrySetIterator implements Iterator<Entry<E>> {
+		private final Iterator<E> keyIterator = m.keySet().iterator();
+		private E currentElement = null;
+
+		@Override
+		public boolean hasNext() {
+			return keyIterator.hasNext();
+		}
+
+		@Override
+		public Entry<E> next() {
+			currentElement = keyIterator.next();
+			return new Entry<>(currentElement, Multiset.this);
+		}
+
+		@Override
+		public void remove() {
+			if (currentElement == null) {
+				throw new IllegalStateException();
+			}
+			Multiset.this.remove(currentElement);
+			currentElement = null;
+		}
+	}
+
+	public static class Entry<E> {
+		private final E element;
+		private final Multiset<E> multiset;
+
+		public Entry(E element, Multiset<E> multiset) {
+			this.element = element;
+			this.multiset = multiset;
+		}
+
+		public E getElement() {
+			return element;
+		}
+
+		public int getCount() {
+			return multiset.m.getOrDefault(element, 0);
+		}
 	}
 
 	/**
@@ -76,16 +131,5 @@ public class Multiset<E> extends AbstractCollection<E> {
 	@Override
 	public Iterator<E> iterator() {
 		throw new UnsupportedOperationException("Not supported yet.");
-	}
-
-	public static class Entry<E> {
-
-		public E getElement() {
-			throw new UnsupportedOperationException("Not supported yet.");
-		}
-
-		public int getCount() {
-			throw new UnsupportedOperationException("Not supported yet.");
-		}
 	}
 }
