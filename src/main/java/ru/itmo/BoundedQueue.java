@@ -11,7 +11,7 @@ public class BoundedQueue<T> extends AbstractCollection<T> implements Queue<T> {
     private int capacity = 0;
     private int size = 0;
     private final Object[] buf;
-    private boolean full = false;
+    private boolean containsLast = false;
 
     BoundedQueue(int capacity) {
         buf = new Object[capacity];
@@ -20,6 +20,11 @@ public class BoundedQueue<T> extends AbstractCollection<T> implements Queue<T> {
 
     @Override
     public boolean offer(T t) {
+        if (containsLast && (last + 1) % capacity != first) {
+            last = (last + 1) % capacity;
+            containsLast = false;
+        }
+
         buf[last] = t;
 
         if (size < capacity) {
@@ -28,6 +33,8 @@ public class BoundedQueue<T> extends AbstractCollection<T> implements Queue<T> {
 
         if ((last + 1) % capacity != first) {
             last = (last + 1) % capacity;
+        } else {
+            containsLast = true;
         }
 
         return true;
@@ -135,7 +142,8 @@ public class BoundedQueue<T> extends AbstractCollection<T> implements Queue<T> {
             if (lastRet < 0) {
                 throw new IllegalStateException();
             }
-            // Check for comodification
+
+            // Check for CME here
 
             BoundedQueue.this.remove(lastRet);
             cur = lastRet;

@@ -2,6 +2,7 @@ package ru.itmo;
 
 import org.junit.jupiter.api.Test;
 
+import java.sql.Array;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
@@ -175,6 +176,59 @@ class BoundedQueueTest {
 
 		ArrayList<Integer> lst = new ArrayList<>(bq);
 		ArrayList<Integer> exp = new ArrayList<>();
+
+		assertEquals(exp, lst);
+	}
+
+	@Test
+	public void testOfferRelaxAfterOverflow() {
+		BoundedQueue<Integer> bq = new BoundedQueue<>(2);
+
+		bq.offer(1);
+		bq.offer(2);
+
+		bq.poll();
+		bq.offer(3);
+
+		ArrayList<Integer> lst = new ArrayList<>(bq);
+		ArrayList<Integer> exp = new ArrayList<>();
+		exp.add(2);
+		exp.add(3);
+
+		assertEquals(exp, lst);
+	}
+
+	@Test
+	public void testIteratorSelectiveRemove() {
+		BoundedQueue<Integer> bq = new BoundedQueue<>(5);
+
+		bq.offer(1);
+		bq.offer(2);
+		bq.offer(3);
+		bq.offer(4);
+		bq.offer(5);
+
+		bq.poll();
+		bq.poll();
+		bq.poll();
+
+		bq.offer(6);
+		bq.offer(7);
+
+		Iterator<Integer> i = bq.iterator();
+
+		i.next();
+		i.next();
+		i.remove();
+
+		i.next();
+		i.remove();
+		i.next();
+
+		ArrayList<Integer> lst = new ArrayList<>(bq);
+		ArrayList<Integer> exp = new ArrayList<>();
+		exp.add(4);
+		exp.add(7);
 
 		assertEquals(exp, lst);
 	}
