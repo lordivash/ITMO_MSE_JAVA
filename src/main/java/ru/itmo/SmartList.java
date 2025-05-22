@@ -14,7 +14,7 @@ public class SmartList<E> extends AbstractList<E> {
 		data = null;
 	}
 
-	public SmartList(Collection<? extends E> c) {
+	public SmartList(Collection<E> c) {
 		if (c.isEmpty()) {
 			size = 0;
 			data = null;
