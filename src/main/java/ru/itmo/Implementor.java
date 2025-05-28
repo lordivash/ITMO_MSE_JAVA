@@ -8,19 +8,12 @@ import com.palantir.javapoet.TypeName;
 import com.palantir.javapoet.TypeSpec;
 
 import java.io.IOException;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
-import java.lang.reflect.Parameter;
+import java.lang.reflect.*;
 import java.net.MalformedURLException;
 import java.net.URLClassLoader;
 import java.net.URL;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public record Implementor(String outputDirectory) {
@@ -45,18 +38,21 @@ public record Implementor(String outputDirectory) {
 	 *                              3) Невозможно записать сгенерированный класс.
 	 */
 	public String implementFromDirectory(String directoryPath, String className) throws ImplementorException {
+		URL url = null;
 		try {
-			URL url = Paths.get(directoryPath).toUri().toURL();
-			URLClassLoader classLoader = new URLClassLoader(new URL[]{url});
-			Class<?> cls = classLoader.loadClass(className);
+			url = Paths.get(directoryPath).toUri().toURL();
+		} catch (MalformedURLException e) {
+			throw new ImplementorException("Invalid directory path: " + directoryPath, e);
+		}
 
+		try (URLClassLoader classLoader = new URLClassLoader(new URL[]{url})){
+			Class<?> cls = classLoader.loadClass(className);
 			if (!supportedClass(cls)) {
 				throw new ImplementorException("Class" + className + " is neither abstract nor interface");
 			}
 			return generateImplementation(cls, cls.getPackageName());
-
-		} catch (MalformedURLException e) {
-			throw new ImplementorException("Invalid directory path: " + directoryPath, e);
+		} catch (IOException e) {
+			throw new ImplementorException("Couldn't close resource URLClassLoader properly", e);
 		} catch (ClassNotFoundException e) {
 			throw new ImplementorException("Class not found: " + className, e);
 		}
@@ -100,7 +96,7 @@ public record Implementor(String outputDirectory) {
 
 	private String generateImplementation(Class<?> cls, String packageName) throws ImplementorException {
 		String implClassName = cls.getSimpleName() + "Impl";
-		String fullClassName = packageName + implClassName;
+		String fullClassName = packageName + (packageName.isEmpty() ? "" : ".") + implClassName;
 
 		TypeSpec.Builder classBuilder = TypeSpec.classBuilder(implClassName)
 				.addModifiers(javax.lang.model.element.Modifier.PUBLIC);
@@ -153,39 +149,64 @@ public record Implementor(String outputDirectory) {
 	}
 
 	private void generateMethods(Class<?> cls, TypeSpec.Builder classBuilder) throws ImplementorException {
-		Set<Method> methods = collectAbstractMethods(cls);
-		for (Method method : methods) {
-			MethodSpec methodSpec = buildMethodSpec(method);
+		Map<String, Method> methods = collectAbstractMethods(cls);
+		for (var entry : methods.entrySet()) {
+			MethodSpec methodSpec = buildMethodSpec(entry.getValue());
 			classBuilder.addMethod(methodSpec);
 		}
 	}
 
-	private Set<Method> collectAbstractMethods(Class<?> cls) {
-		Set<Method> methods = new HashSet<>();
+	private Map<String, Method> collectAbstractMethods(Class<?> cls) {
+		Map<String, Method> methods = new HashMap<>();
+		Set<String> syntheticMethods = new HashSet<>();
 		Class<?> current = cls;
 
 		while (current != null && current != Object.class) {
-			for (Method method : current.getDeclaredMethods()) {
-				if (Modifier.isAbstract(method.getModifiers())) {
-					methods.add(method);
-				}
-			}
+			populateMapWithAbstractMethods(methods, syntheticMethods, current);
 
 			for (Class<?> iface : current.getInterfaces()) {
-				methods.addAll(collectInterfaceMethods(iface));
+				Map<String, Method> ifaceMethods = collectInterfaceMethods(iface, syntheticMethods);
+				for (var entry : ifaceMethods.entrySet()) {
+					methods.putIfAbsent(entry.getKey(), entry.getValue());
+				}
 			}
 
 			current = current.getSuperclass();
 		}
+
 		return methods;
 	}
 
-	private Set<Method> collectInterfaceMethods(Class<?> iface) {
-        Set<Method> methods = new HashSet<>(Arrays.asList(iface.getMethods()));
+	void populateMapWithAbstractMethods(Map<String, Method> methods, Set<String> syntheticMethods, Class<?> cls) {
+		for (Method method : cls.getDeclaredMethods()) {
+			String hash = hashMethod(method);
+            if (!syntheticMethods.contains(hash)) {
+                if (method.isSynthetic()) {
+                    syntheticMethods.add(hash);
+                } else if (Modifier.isAbstract(method.getModifiers())) {
+                    methods.putIfAbsent(hash, method);
+                }
+            }
+        }
+	}
+
+	private Map<String, Method> collectInterfaceMethods(Class<?> iface, Set<String> syntheticMethods) {
+		Map<String, Method> methods = new HashMap<>();
+		populateMapWithAbstractMethods(methods, syntheticMethods, iface);
+
+
 		for (Class<?> superIface : iface.getInterfaces()) {
-			methods.addAll(collectInterfaceMethods(superIface));
+			Map<String, Method> superMethods = collectInterfaceMethods(superIface, syntheticMethods);
+			for (var entry : superMethods.entrySet()) {
+				methods.putIfAbsent(entry.getKey(), entry.getValue());
+			}
 		}
+
 		return methods;
+	}
+
+	private String hashMethod(Method method) {
+		return method.getName() + Arrays.toString(method.getParameters());
 	}
 
 	private MethodSpec buildMethodSpec(Method method) throws ImplementorException {
@@ -216,12 +237,13 @@ public record Implementor(String outputDirectory) {
 
 	private String getDefaultValue(Class<?> type) {
 		if (type.isPrimitive()) {
-			if (type == boolean.class) return "false";
 			if (type == char.class) return "'\\0'";
-			if (type == byte.class || type == short.class || type == int.class || type == long.class) return "0";
-			if (type == float.class) return "0.0f";
-			if (type == double.class) return "0.0d";
+
+			String value = Array.get(Array.newInstance(type, 1), 0).toString();
+			if (type == float.class) return value + "f";
+			return value;
 		}
+
 		return "null";
 	}
 }
