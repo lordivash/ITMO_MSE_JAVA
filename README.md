@@ -1,33 +1,30 @@
-# Репозиторий с материалами по курсу Java
+# ArraySet
 
-## Порядок сдачи заданий
+* Необходимо создать класс `ArraySet`, реализующий интерфейс `java.util.NavigableSet` (включая методы из `java.util.SortedSet`)
 
-1. Клонировать данный репозиторий и запушить в СВОЙ НОВЫЙ ПРИВАТНЫЙ репозиторий. Добавляем оригинальный репозиторий в качестве `upstream`
-```
-git clone git@github.com:DKARAGODIN/ITMO_MSE_JAVA.git
-git remote remove origin
-git remote add origin *URL TO YOUR NEW PRIVATE REPO*
-git remote add upstream git@github.com:DKARAGODIN/ITMO_MSE_JAVA.git
-```
+```java
+public class ArraySet<E extends Comparable<? super E>> implements NavigableSet<E> {
+    // Минимальный набор конструкторов
+    public ArraySet() {...}
+    
+    // Указывает компаратор, с помощью которого необходимо сравнивать значения
+    // В качестве значения по-умолчанию можно использовать `Comparator.naturalOrder()`
+    public ArraySet(Comparator<? super E> comparator) {...}
 
-2. Домашки выкладываются в ветки вида `task-N-title`, контрольные в ветки `control-N-title`
+    public ArraySet(Collection<E> collection) {...}
 
-3. Для сдачи задания требуется добавить ветку из основного репозитория в свой и запушить в свой репозиторий
-
-```
-git fetch upstream
-git checkout upstream/task-N-title
-git checkout -b task-N-title
-git push origin task-N-title
+    public ArraySet(Collection<E> collection, Comparator<? super E> comparator) {...}
+    
+    // Остальные методы
+}
 ```
 
-4. Создать ветку `task-N-title-dev`, в которую добавляется решение
+## Условия
 
-```
-git checkout -b task-N-title-dev
-```
-
-5. При готовности задания запушить `dev` ветку и создать Pull Request. В качестве reviewr назначить меня.
-   Заголовок PR должен быть в следующем виде: **Фамилия Имя. Task N** или **Фамилия Имя. Control N**.
-
-6. Требования к ПО: Java 21, Maven 3.9.9. 
+* В множестве все элементы хранятся в отсортированном списке
+* Сложность операций модификации множества: _O(n)_
+* Сложность всех остальных операций, связанных с поиском в множестве: _O(log n)_ (обратите внимание на методы из класса `Collections`)
+* Обратите внимание, что различные методы, которые возвращают подмножества (например, `tailSet(E fromElement)`) должны возвращать _view_ на основное множество. Это значит, что если изменить подмножество, то и основное множество также изменится
+* При реализации рекомендуется наследовать ваш класс от `AbstractSet`, и нельзя наследоваться от `TreeSet`
+* Для того, чтобы вам не мешали warning'и "unchecked cast" используйте на соответствующих методах аннотацию `@SuppressWarnings("unchecked")`
+* Метод `spliterator()` реализовывать не надо, пусть он бросает `UnsupportedOperationException`
