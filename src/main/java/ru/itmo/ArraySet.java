@@ -1,70 +1,100 @@
 package ru.itmo;
 
-import java.util.AbstractSet;
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.Iterator;
-import java.util.NavigableSet;
-import java.util.SortedSet;
-import java.util.Spliterator;
+import java.util.*;
 
 public class ArraySet<E extends Comparable<? super E>> extends AbstractSet<E> implements NavigableSet<E> {
+	private ArrayList<E> elements;
+	private Comparator<? super E> comparator;
 
-	public ArraySet() {}
+	public ArraySet() {
+		this(Comparator.naturalOrder(), Collections.emptyList());
+	}
 
-	public ArraySet(Comparator<? super E> comparator) {}
+	public ArraySet(Comparator<? super E> comparator) {
+		this(comparator, Collections.emptyList());
+	}
 
-	public ArraySet(Collection<E> collection) {}
+	public ArraySet(Collection<E> collection) {
+		this(Comparator.naturalOrder(), collection);
+	}
 
-	public ArraySet(Collection<E> collection, Comparator<? super E> comparator) {}
+	public ArraySet(Collection<E> collection, Comparator<? super E> comparator) {
+		this(comparator, collection);
+	}
+
+	private ArraySet(Comparator<? super E> comparator, Collection<E> collection) {
+		this.comparator = comparator;
+		this.elements = new ArrayList<>();
+		this.elements.addAll(collection);
+		this.elements.sort(comparator);
+	}
 
 	// ---------------- Set ----------------
 
 	@Override
 	public boolean add(E e) {
-		throw new UnsupportedOperationException();
+		int index = Collections.binarySearch(elements, e, comparator);
+		if (index >= 0) {
+			return false;
+		}
+		int insertionPoint = -index - 1;
+		elements.add(insertionPoint, e);
+		return true;
 	}
 
 	@Override
+	@SuppressWarnings("unchecked")
 	public boolean contains(Object o) {
-		throw new UnsupportedOperationException();
+		return Collections.binarySearch(elements, (E) o, comparator) >= 0;
 	}
 
 	@Override
+	@SuppressWarnings("unchecked")
 	public boolean remove(Object o) {
-		throw new UnsupportedOperationException();
+		int index = Collections.binarySearch(elements, (E) o, comparator);
+		if (index < 0) {
+			return false;
+		}
+		elements.remove(index);
+		return true;
 	}
 
 	@Override
 	public Iterator<E> iterator() {
-		throw new UnsupportedOperationException();
+		return elements.iterator();
 	}
 
 	@Override
 	public int size() {
-		throw new UnsupportedOperationException();
+		return elements.size();
 	}
 
 	@Override
 	public void clear() {
-		throw new UnsupportedOperationException();
+		elements.clear();
 	}
 
 	// ---------------- SortedSet ----------------
 
 	@Override
 	public Comparator<? super E> comparator() {
-		throw new UnsupportedOperationException();
+		return comparator == Comparator.naturalOrder() ? null : comparator;
 	}
 
 	@Override
 	public E first() {
-		throw new UnsupportedOperationException();
+		if (isEmpty()) {
+			throw new NoSuchElementException();
+		}
+		return elements.getFirst();
 	}
 
 	@Override
 	public E last() {
-		throw new UnsupportedOperationException();
+		if (isEmpty()) {
+			throw new NoSuchElementException();
+		}
+		return elements.getLast();
 	}
 
 	@Override
@@ -77,32 +107,64 @@ public class ArraySet<E extends Comparable<? super E>> extends AbstractSet<E> im
 
 	@Override
 	public E lower(E e) {
-		throw new UnsupportedOperationException();
+		int index = Collections.binarySearch(elements, e, comparator);
+		int pos = index >= 0 ? index : -index - 1;
+		if (pos == 0) {
+			return null;
+		}
+		return elements.get(pos - 1);
 	}
 
 	@Override
 	public E floor(E e) {
-		throw new UnsupportedOperationException();
+		int index = Collections.binarySearch(elements, e, comparator);
+		if (index >= 0) {
+			return elements.get(index);
+		}
+		int pos = -index - 1;
+		if (pos == 0) {
+			return null;
+		}
+		return elements.get(pos - 1);
 	}
 
 	@Override
 	public E ceiling(E e) {
-		throw new UnsupportedOperationException();
+		int index = Collections.binarySearch(elements, e, comparator);
+		if (index >= 0) {
+			return elements.get(index);
+		}
+		int pos = -index - 1;
+		if (pos == elements.size()) {
+			return null;
+		}
+		return elements.get(pos);
 	}
 
 	@Override
 	public E higher(E e) {
-		throw new UnsupportedOperationException();
+		int index = Collections.binarySearch(elements, e, comparator);
+		int pos = index >= 0 ? index + 1 : -index - 1;
+		if (pos >= elements.size()) {
+			return null;
+		}
+		return elements.get(pos);
 	}
 
 	@Override
 	public E pollFirst() {
-		throw new UnsupportedOperationException();
+		if (isEmpty()) {
+			return null;
+		}
+		return elements.removeFirst();
 	}
 
 	@Override
 	public E pollLast() {
-		throw new UnsupportedOperationException();
+		if (isEmpty()) {
+			return null;
+		}
+		return elements.removeLast();
 	}
 
 	@Override
