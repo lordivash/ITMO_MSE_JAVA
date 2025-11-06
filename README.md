@@ -1,33 +1,14 @@
-# Репозиторий с материалами по курсу Java
+# Контрольная 1. Lazy value, Memoized function
 
-## Порядок сдачи заданий
+- Задание 1 (5 баллов). Реализовать интерфейсы (см. комментарии к `LazyValue` и `MemoizedFunction`)
+    - все имплементации должны быть thread-safe
+    - с одним и тем же объектом `StorageManager` должно быть можно работать нескольким потокам одновременно
+    - помните, что возвращаемые значения (`R`) могут быть `null`
+- Задание 2. (2 балл). Сделайте так, чтобы могло происходить параллельно несколько вычислений по разным аргументам
+  для `MemoizedFunction`
+- Задание 3. (2 балл). Поддержите расширенный интерфейс `StorageManager` с обработкой рекурсивных вызовов.
+  Семантика следующая: если вычисление вызывает непосредственно само себя рекурсивно, то в качестве результата
+  этого вычисления используется значение соответствующего вызова аргумента `onRecursion`.
+  Если `onRecursion == null`, то бросается `RecursiveComputationException`.
 
-1. Клонировать данный репозиторий и запушить в СВОЙ НОВЫЙ ПРИВАТНЫЙ репозиторий. Добавляем оригинальный репозиторий в качестве `upstream`
-```
-git clone git@github.com:DKARAGODIN/ITMO_MSE_JAVA.git
-git remote remove origin
-git remote add origin *URL TO YOUR NEW PRIVATE REPO*
-git remote add upstream git@github.com:DKARAGODIN/ITMO_MSE_JAVA.git
-```
-
-2. Домашки выкладываются в ветки вида `task-N-title`, контрольные в ветки `control-N-title`
-
-3. Для сдачи задания требуется добавить ветку из основного репозитория в свой и запушить в свой репозиторий
-
-```
-git fetch upstream
-git checkout upstream/task-N-title
-git checkout -b task-N-title
-git push origin task-N-title
-```
-
-4. Создать ветку `task-N-title-dev`, в которую добавляется решение
-
-```
-git checkout -b task-N-title-dev
-```
-
-5. При готовности задания запушить `dev` ветку и создать Pull Request. В качестве reviewr назначить меня.
-   Заголовок PR должен быть в следующем виде: **Фамилия Имя. Task N** или **Фамилия Имя. Control N**.
-
-6. Требования к ПО: Java 21, Maven 3.9.9. 
+**Note:** `StorageManager` -- это лишь фабрика для создания `LazyValue` и `MemoizedFunction`, и он не должен содержать никакой сложной логики
