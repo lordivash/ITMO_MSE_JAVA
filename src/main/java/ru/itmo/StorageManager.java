@@ -5,8 +5,7 @@ import java.util.function.Supplier;
 
 public interface StorageManager {
     static StorageManager getInstance() {
-        // TODO: replace with your implementation
-        throw new UnsupportedOperationException();
+        return new StorageManagerImpl();
     }
 
     <R> LazyValue<R> createLazyValue(Supplier<R> supplier);
