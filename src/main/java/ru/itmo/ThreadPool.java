@@ -5,7 +5,7 @@ import org.jspecify.annotations.NonNull;
 
 public interface ThreadPool {
 	static @NonNull ThreadPool create(int threads) {
-		throw new UnsupportedOperationException();
+		return new ThreadPoolStrict(threads);
 	}
 
 	<R> @NonNull LightFuture<R> submit(Supplier<R> supplier);
