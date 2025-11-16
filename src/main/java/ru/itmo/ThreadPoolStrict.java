@@ -19,18 +19,17 @@ public class ThreadPoolStrict implements ThreadPool {
     private boolean shutdown = false;
 
     private final Lock queueLock = new ReentrantLock();
-    private final Condition notEmpty;
+    private final Condition notEmptyOrShutdown;
 
     ThreadPoolStrict(int n) {
         threads = new Thread[n];
-        notEmpty = queueLock.newCondition();
+        notEmptyOrShutdown = queueLock.newCondition();
 
         for (int i = 0; i < threads.length; ++i) {
             threads[i] = new Thread(() -> {
                 while (true) {
                     try {
                         TaskRecord<?> task = takeBlocking();
-                        // Here interrupt shouldn't affect task
                         task.execute();
                     } catch (InterruptedException e) {
                         return;
@@ -61,7 +60,6 @@ public class ThreadPoolStrict implements ThreadPool {
         public @NonNull R get() throws LightExecutionException {
             try {
                 // Maybe this can be optimized
-                // Should we make this interruptable?
                 synchronized (this) {
                     while (!isReady) this.wait();
                 }
@@ -80,7 +78,7 @@ public class ThreadPoolStrict implements ThreadPool {
         public @NonNull <R1> LightFuture<R1> thenApply(Function<R, R1> function) {
             return submit(() -> {
                 try {
-                    // Can it block thread pool?
+                    // Maybe this can be optimized
                     R dependency = get();
                     return function.apply(dependency);
                 } catch (LightExecutionException e) {
@@ -122,13 +120,9 @@ public class ThreadPoolStrict implements ThreadPool {
         try {
             // Write happens here
             shutdown = true;
+            notEmptyOrShutdown.signalAll();
         } finally {
             queueLock.unlock();
-        }
-
-        // Can potentially interrupt execution of a task
-        for (Thread thread : threads) {
-            thread.interrupt();
         }
     }
 
@@ -150,7 +144,7 @@ public class ThreadPoolStrict implements ThreadPool {
             }
 
             taskQueue.offer(element);
-            notEmpty.signal();
+            notEmptyOrShutdown.signal();
         } catch (InterruptedException e) {
             throw new RejectedExecutionException();
         } finally {
@@ -160,15 +154,16 @@ public class ThreadPoolStrict implements ThreadPool {
 
     private TaskRecord<?> takeBlocking() throws InterruptedException {
         queueLock.lock();
-        TaskRecord<?> element;
-
+        TaskRecord<?> task;
         try {
-            while (taskQueue.isEmpty()) notEmpty.await();
-            element = taskQueue.poll();
+            if (shutdown && taskQueue.isEmpty()) throw new InterruptedException();
+            while (taskQueue.isEmpty() && !shutdown) notEmptyOrShutdown.await();
+            if (shutdown && taskQueue.isEmpty()) throw new InterruptedException();
+            task = taskQueue.poll();
         } finally {
             queueLock.unlock();
         }
 
-        return element;
+        return task;
     }
 }
