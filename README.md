@@ -1,33 +1,144 @@
-# Репозиторий с материалами по курсу Java
+# Autoserialization
 
-## Порядок сдачи заданий
+## Идея
 
-1. Клонировать данный репозиторий и запушить в СВОЙ НОВЫЙ ПРИВАТНЫЙ репозиторий. Добавляем оригинальный репозиторий в качестве `upstream`
-```
-git clone git@github.com:DKARAGODIN/ITMO_MSE_JAVA.git
-git remote remove origin
-git remote add origin *URL TO YOUR NEW PRIVATE REPO*
-git remote add upstream git@github.com:DKARAGODIN/ITMO_MSE_JAVA.git
-```
+В данной работе вам предстоит реализовать небольшой фреймфорк для автоматической (де)сериализации объектов, наподобие `@Serializable` в Java.
 
-2. Домашки выкладываются в ветки вида `task-N-title`, контрольные в ветки `control-N-title`
+С точки зрения пользователя это выглядит следующим образом. Есть следующие классы и интерфейсы:
 
-3. Для сдачи задания требуется добавить ветку из основного репозитория в свой и запушить в свой репозиторий
+```java
+public interface Letter {}
 
-```
-git fetch upstream
-git checkout upstream/task-N-title
-git checkout -b task-N-title
-git push origin task-N-title
+@Retention(RetentionPolicy.SOURCE)
+@Target(ElementType.TYPE)
+public @interface Letterize {
+}
 ```
 
-4. Создать ветку `task-N-title-dev`, в которую добавляется решение
+Пользователь помечает класс, объекты которого будет необходимо сериализовывать/десериализовывать аннотацией `@Letterize` и наследует от интерфейса `Letter`:
 
+```java
+@Letterize
+class Person implements Letter {
+    public int age;
+    public String name;
+}
 ```
-git checkout -b task-N-title-dev
+
+После этого, становится возможно (де)сериализовывать объекты этого класса следующим образом:
+
+```java
+private void showcaseSend() throws IOException {
+    DataOutputStream dataOutputStream = new DataOutputStream(socket.getOutputStream());
+    LetterSerializer serializer = new LetterSerializer(dataOutputStream);
+
+    Person person = new Person();
+    person.age = 24;
+    person.name = "John Doe";
+
+   
+    serializer.serializePerson(person);
+}
+
+
+private void showcaseReceive() throws IOException {
+    DataInputStream inputStream = new DataInputStream(socket.getInputStream());
+    LetterDeserializer deserializer = new LetterDeserializer(dataOutputStream);   
+
+    Person person = deserializer.deserializePerson();
+
+    assertEquals(24, person.age);
+    assertEquals("John Doe", person.name);
+}
 ```
 
-5. При готовности задания запушить `dev` ветку и создать Pull Request. В качестве reviewr назначить меня.
-   Заголовок PR должен быть в следующем виде: **Фамилия Имя. Task N** или **Фамилия Имя. Control N**.
+## Реализация
 
-6. Требования к ПО: Java 21, Maven 3.9.9. 
+Для этого вам необходимо будет реализовать annotation processor, который будет находить классы, помеченные аннотацией `@Letterize` и генерировать два класса `LetterSerializer` и `LetterDeserializer`, в которых будут методы для сериализации и десериализации всех классов, помеченных аннотацией `@Letterize`.
+
+Например, для примера выше после работы anotation processor'а, будут сгенерированны следующие классы:
+
+```java
+public class Serializer {
+    private final DataOutputStream output;
+
+    public Serializer(DataOutputStream output) {
+        this.output = output;    
+    }
+
+    public void serializePerson(Person person) throws IOException {
+        output.writeInt(person.age);
+        output.writeUTF(person.name);    
+    }
+}
+
+public class Deserializer {
+    private final DataInputStream input;
+
+    public Deserializer(DataInputStream input) {
+        this.input = input;    
+    }
+
+    public Person desrializePerson() throws IOException {
+        Person person = new Person();
+        person.age = input.readInt();
+        person.name = input.readUTF();
+        return person;    
+    }
+}
+```
+
+В данном задании *запрещается* пользоваться:
+- `Object*Stream`
+- Сторонними библиотеками для кодогенерации. Можно использовать `javapoet` (уже добавлена в зависимости проекта) или класс ru.ifmo.java.serialization.processor.JavaWriter (тоже добавлен, почти то же самое что и javapoet)
+- Сторонними библиотеками для (де)сериализации
+
+
+При этом, разрешается просить у пользователя подключить какие-то дополнительные утилитные классы из вашей библиотеки (это может быть полезно, чтобы упростить генерируемый код).
+
+
+**Общие ограничения для всех заданий:**
+- Все поля публичные, не финальные
+- В случае, если нарушен формат сообщения, бросается `IllegalLetterFormatException`
+- Помните, что классы могут наследоваться!
+
+
+## Задание №1 (3 балла)
+
+Реализовать (де)серилазиацию для простейших случаев:
+- Классы состоят только из полей примитивных типов + `String` (т.е. вложенные сообщения поддерживать в данном задании не требуется)
+- Наличие данных для всех полей обязательно
+
+## Задание №2 (3 балла)
+
+Поддержать вложенные сообщения:
+- Класс может содержать поля reference-типов.
+- Все такие поля должны быть помечены `@Letterize` и отнаследованы от интерфейса `Letter`, в противном случае компиляция должна завершиться с ошибкой, в которой описывается, для какого класса это требование было нарушено.
+- Циклические структуры данных не поддерживаются, в противном случае компиляция должна завершиться с ошибкой.
+- Помните, что значением reference-поля может быть `null`!
+
+## Задание №3 (3 балла)
+
+Поддержать циклические структуры данных
+
+## Задание №4 (3 балла)
+
+Поддержать опциональные поля. Опциональное поле помечено аннотацией `@LetterizeOptional` и *не обязано* присутствовать в десериализуемом сообщении.
+Если при десериализации сообщения такое поле не было обнаружено во входном потоке, то это не приводит к `IllegalLetterFormatException`, а вместо этого оно заполняется дефолтным значением:
+- `0` для целочисленных типов
+- `0.0` для вещественных типов
+- `""` (пустая строка) для `String`
+- `null` для reference-типов
+
+Пояснение: такая ситуация может случиться в следующем случае:
+1. однажды был создан и сериализован (на диск, например) некоторый класс
+2. в класс было добавлено поле с аннотацией `@LetterizeOptional`, после чего он был заного скомпилированн
+3. этот обновлённый класс десериализуется из дампа, созданного в п.1
+
+## Задание №5 (3 балла)
+
+Добавить в `Serializer` и `Deserializer` методы `void serialize(Class<?> clazz, Object object)` и `Object deserialize(Class<?> clazz)` соответсвенно, которые внутри себя будут вызывать соответствующий `serialize*` и `deserialize*` в зависимости от переданного `Class<?>` или бросать `IllegalArgumentException`, если для переданный класс не имеет импементации (де)сериализации
+
+Чтобы эта домашка была зачтена достаточно получить 6 баллов
+
+**Дедлайн:** 7.12.25, 23:59
