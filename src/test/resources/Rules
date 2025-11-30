@@ -1,0 +1,20 @@
+Test case: ClassWithRules
+Test: expectException
+Result SUCCESS
+Run for some time
+
+Test case: ClassWithRules
+Test: fail
+Result FAIL
+Run for some time
+Failed with: java.lang.RuntimeException
+
+Test case: ClassWithRules
+Test: ignored
+Result IGNORED
+Ignore reason: 'ignore'
+
+Test case: ClassWithRules
+Test: okTest
+Result SUCCESS
+Run for some time

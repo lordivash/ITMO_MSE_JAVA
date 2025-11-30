@@ -1,0 +1,25 @@
+Test case: SimpleClass
+Test: failTestWithoutExpectedException
+Result FAIL
+Run for some time
+Failed with: java.lang.NullPointerException: Cannot invoke "java.lang.Integer.intValue()" because "null" is null
+
+Test case: SimpleClass
+Test: ignoreTestNoReason
+Result IGNORED
+Ignore reason: ''
+
+Test case: SimpleClass
+Test: ignoreTestWithReason
+Result IGNORED
+Ignore reason: 'reason'
+
+Test case: SimpleClass
+Test: okTest
+Result SUCCESS
+Run for some time
+
+Test case: SimpleClass
+Test: testWithExpectedException
+Result SUCCESS
+Run for some time
